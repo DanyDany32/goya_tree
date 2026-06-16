@@ -50,7 +50,11 @@ jobs:
           mkdir -p ~/workspace/device/xiaomi/goya
           cp -r $GITHUB_WORKSPACE/goya_tree/* ~/workspace/device/xiaomi/goya/
           
-          # IL FIX CHE FUNZIONA: Rimettiamo le partizioni fisiche per non far schiantare rsync al 99%
+          rm -rf ~/workspace/device/xiaomi/goya/recovery/root/vendor
+          rm -rf ~/workspace/device/xiaomi/goya/recovery/root/product
+          rm -rf ~/workspace/device/xiaomi/goya/recovery/root/system_ext
+          rm -rf ~/workspace/device/xiaomi/goya/recovery/root/odm
+          
           cat << 'EOF' >> ~/workspace/device/xiaomi/goya/BoardConfig.mk
           TARGET_COPY_OUT_VENDOR := vendor
           BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := ext4
@@ -70,12 +74,10 @@ jobs:
           export LC_ALL="C"
           source build/envsetup.sh
           lunch twrp_goya-ap2a-eng
-          
-          # Aggiunto "|| true" per forzare il SUCCESSO anche se fallisce il pacchetto finale
           mka adbd vendorbootimage || true
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OrangeFox-15T-Ramdisk
-          path: ~/workspace/out/target/product/goya/ramdisk-recovery.img
+          name: OrangeFox-15T-Images
+          path: /home/runner/workspace/out/target/product/goya/*.img
