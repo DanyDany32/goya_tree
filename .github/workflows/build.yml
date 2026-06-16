@@ -39,23 +39,23 @@ jobs:
         run: |
           git config --global user.name "Builder"
           git config --global user.email "build@example.com"
-          mkdir ~/workspace
-          cd ~/workspace
+          mkdir -p /home/runner/workspace
+          cd /home/runner/workspace
           git clone https://gitlab.com/OrangeFox/sync.git
           cd sync
-          ./orangefox_sync.sh --branch 14.1 --path ~/workspace
+          ./orangefox_sync.sh --branch 14.1 --path /home/runner/workspace
 
       - name: Move Device Tree and FIX Symlink
         run: |
-          mkdir -p ~/workspace/device/xiaomi/goya
-          cp -r $GITHUB_WORKSPACE/goya_tree/* ~/workspace/device/xiaomi/goya/
+          mkdir -p /home/runner/workspace/device/xiaomi/goya
+          cp -r $GITHUB_WORKSPACE/goya_tree/* /home/runner/workspace/device/xiaomi/goya/
           
-          rm -rf ~/workspace/device/xiaomi/goya/recovery/root/vendor
-          rm -rf ~/workspace/device/xiaomi/goya/recovery/root/product
-          rm -rf ~/workspace/device/xiaomi/goya/recovery/root/system_ext
-          rm -rf ~/workspace/device/xiaomi/goya/recovery/root/odm
+          rm -rf /home/runner/workspace/device/xiaomi/goya/recovery/root/vendor
+          rm -rf /home/runner/workspace/device/xiaomi/goya/recovery/root/product
+          rm -rf /home/runner/workspace/device/xiaomi/goya/recovery/root/system_ext
+          rm -rf /home/runner/workspace/device/xiaomi/goya/recovery/root/odm
           
-          cat << 'EOF' >> ~/workspace/device/xiaomi/goya/BoardConfig.mk
+          cat << 'EOF' >> /home/runner/workspace/device/xiaomi/goya/BoardConfig.mk
           TARGET_COPY_OUT_VENDOR := vendor
           BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := ext4
           TARGET_COPY_OUT_PRODUCT := product
@@ -68,7 +68,7 @@ jobs:
 
       - name: Build OrangeFox
         run: |
-          cd ~/workspace
+          cd /home/runner/workspace
           export ALLOW_MISSING_DEPENDENCIES=true
           export FOX_BUILD_DEVICE=goya
           export LC_ALL="C"
@@ -76,8 +76,13 @@ jobs:
           lunch twrp_goya-ap2a-eng
           mka adbd vendorbootimage || true
 
+      - name: Gather Artifacts (Antiproiettile)
+        run: |
+          mkdir -p /home/runner/upload_artifacts
+          cp /home/runner/workspace/out/target/product/goya/*.img /home/runner/upload_artifacts/ || true
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: OrangeFox-15T-Images
-          path: /home/runner/workspace/out/target/product/goya/*.img
+          path: /home/runner/upload_artifacts/
