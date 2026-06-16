@@ -45,26 +45,20 @@ jobs:
           cd sync
           ./orangefox_sync.sh --branch 14.1 --path ~/workspace
 
-      - name: Move Device Tree and Fix Vendor Symlink
+      - name: Move Device Tree and Apply Fixes
         run: |
           mkdir -p ~/workspace/device/xiaomi/goya
           cp -r $GITHUB_WORKSPACE/goya_tree/* ~/workspace/device/xiaomi/goya/
           
-          # Eliminiamo la spazzatura se presente
+          # 1. Eliminiamo le cartelle fisiche caricate per sbaglio che causano l'errore
           rm -rf ~/workspace/device/xiaomi/goya/recovery/root/vendor
           rm -rf ~/workspace/device/xiaomi/goya/recovery/root/product
+          rm -rf ~/workspace/device/xiaomi/goya/recovery/root/system_ext
+          rm -rf ~/workspace/device/xiaomi/goya/recovery/root/odm
           
-          # IL FIX DEFINITIVO: Diciamo ad Android di trattare i vendor come cartelle vere (no symlink)
-          cat << 'EOF' >> ~/workspace/device/xiaomi/goya/BoardConfig.mk
-          TARGET_COPY_OUT_VENDOR := vendor
-          BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := ext4
-          TARGET_COPY_OUT_PRODUCT := product
-          BOARD_PRODUCTIMAGE_FILE_SYSTEM_TYPE := ext4
-          TARGET_COPY_OUT_SYSTEM_EXT := system_ext
-          BOARD_SYSTEM_EXTIMAGE_FILE_SYSTEM_TYPE := ext4
-          TARGET_COPY_OUT_ODM := odm
-          BOARD_ODMIMAGE_FILE_SYSTEM_TYPE := ext4
-          EOF
+          # 2. LA MAGIA: Patch per forzare l'ignoramento dei conflitti di symlink in rsync
+          sed -i 's/rsync -a --exclude=sdcard/rsync -a --keep-dirlinks --exclude=sdcard/g' ~/workspace/vendor/recovery/core_makefile.mk || true
+          sed -i 's/rsync -a --exclude=sdcard/rsync -a --keep-dirlinks --exclude=sdcard/g' ~/workspace/bootable/recovery/Android.mk || true
 
       - name: Build OrangeFox
         run: |
@@ -79,5 +73,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OrangeFox-15T
-          path: ~/workspace/out/target/product/goya/vendor_boot.img
+          name: OrangeFox-15T-Ramdisk
+          path: |
+            ~/workspace/out/target/product/goya/ramdisk-recovery.img
+            ~/workspace/out/target/product/goya/vendor_boot.img
