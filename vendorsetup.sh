@@ -1,0 +1,11 @@
+# Variabili Obbligatorie OrangeFox esportate via Bash
+export FOX_BUILD_DEVICE=goya
+export FOX_AB_DEVICE=1
+export FOX_VIRTUAL_AB_DEVICE=1
+export FOX_RECOVERY_INSTALL_PARTITION="/vendor_boot"
+export FOX_RECOVERY_SYSTEM_PARTITION="/system"
+export FOX_RECOVERY_VENDOR_PARTITION="/vendor"
+export FOX_RECOVERY_BOOT_PARTITION="/boot"
+export OF_DISABLE_MIUI_OTA_BY_DEFAULT=1
+export OF_SCREEN_H=2712
+export OF_SCREEN_W=1220
