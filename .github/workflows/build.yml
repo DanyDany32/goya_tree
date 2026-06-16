@@ -45,23 +45,20 @@ jobs:
           cd sync
           ./orangefox_sync.sh --branch 14.1 --path ~/workspace
 
-      - name: Move Device Tree
+      - name: Move Device Tree and Clean Garbage
         run: |
           mkdir -p ~/workspace/device/xiaomi/goya
           cp -r $GITHUB_WORKSPACE/goya_tree/* ~/workspace/device/xiaomi/goya/
-
-      - name: Fix Symlink Bug
-        run: |
-          cat << 'EOF' >> ~/workspace/device/xiaomi/goya/BoardConfig.mk
-          TARGET_COPY_OUT_VENDOR := vendor
-          BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := ext4
-          TARGET_COPY_OUT_PRODUCT := product
-          BOARD_PRODUCTIMAGE_FILE_SYSTEM_TYPE := ext4
-          TARGET_COPY_OUT_SYSTEM_EXT := system_ext
-          BOARD_SYSTEM_EXTIMAGE_FILE_SYSTEM_TYPE := ext4
-          TARGET_COPY_OUT_ODM := odm
-          BOARD_ODMIMAGE_FILE_SYSTEM_TYPE := ext4
-          EOF
+          
+          # FIX FATALE: Eliminiamo le cartelle caricate per sbaglio nello zip
+          rm -rf ~/workspace/device/xiaomi/goya/recovery/root/vendor
+          rm -rf ~/workspace/device/xiaomi/goya/recovery/root/product
+          rm -rf ~/workspace/device/xiaomi/goya/recovery/root/system_ext
+          rm -rf ~/workspace/device/xiaomi/goya/recovery/root/odm
+          
+          # Ripuliamo il BoardConfig da vecchi fix non compatibili con A14
+          sed -i '/TARGET_COPY_OUT_/d' ~/workspace/device/xiaomi/goya/BoardConfig.mk || true
+          sed -i '/_FILE_SYSTEM_TYPE/d' ~/workspace/device/xiaomi/goya/BoardConfig.mk || true
 
       - name: Build OrangeFox
         run: |
