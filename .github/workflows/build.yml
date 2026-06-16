@@ -19,11 +19,9 @@ jobs:
           swap-storage: false
 
       - name: Setup Swap Space
-        run: |
-          sudo fallocate -l 12G /swapfile
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
+        uses: pierotofy/set-swap-space@master
+        with:
+          swap-size-gb: 16
 
       - name: Checkout Device Tree
         uses: actions/checkout@v4
