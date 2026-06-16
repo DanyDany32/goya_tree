@@ -25,6 +25,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y git-core curl python3 python-is-python3 zip unzip bc cpio rsync flex bison wget libssl-dev libncurses-dev lz4 zlib1g-dev openjdk-17-jdk build-essential
+          sudo curl https://storage.googleapis.com/git-repo-downloads/repo -o /usr/local/bin/repo
+          sudo chmod a+rx /usr/local/bin/repo
 
       - name: Sync OrangeFox 14.1
         run: |
@@ -39,9 +41,6 @@ jobs:
       - name: Move Device Tree
         run: |
           mkdir -p ~/workspace/device/xiaomi/goya
-          cp -r $GITHUB_WORKSPACE/goya_tree/* ~/workspace/workspace/device/xiaomi/goya/
-          # Correzione rapida del path
-          rm -rf ~/workspace/workspace
           cp -r $GITHUB_WORKSPACE/goya_tree/* ~/workspace/device/xiaomi/goya/
 
       - name: Build OrangeFox
