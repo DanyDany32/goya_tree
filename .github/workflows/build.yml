@@ -1,0 +1,61 @@
+name: Build OrangeFox 14.1
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Maximize Build Space
+        uses: easimon/maximize-build-space@master
+        with:
+          swap-size-mb: 32768
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+
+      - name: Checkout Device Tree
+        uses: actions/checkout@v4
+        with:
+          path: goya_tree
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git-core curl python3 python-is-python3 zip unzip bc cpio rsync flex bison wget libssl-dev libncurses-dev lz4 zlib1g-dev openjdk-17-jdk build-essential
+
+      - name: Sync OrangeFox 14.1
+        run: |
+          git config --global user.name "Builder"
+          git config --global user.email "build@example.com"
+          mkdir ~/workspace
+          cd ~/workspace
+          git clone https://gitlab.com/OrangeFox/sync.git
+          cd sync
+          ./orangefox_sync.sh --branch 14.1 --path ~/workspace
+
+      - name: Move Device Tree
+        run: |
+          mkdir -p ~/workspace/device/xiaomi/goya
+          cp -r $GITHUB_WORKSPACE/goya_tree/* ~/workspace/workspace/device/xiaomi/goya/
+          # Correzione rapida del path
+          rm -rf ~/workspace/workspace
+          cp -r $GITHUB_WORKSPACE/goya_tree/* ~/workspace/device/xiaomi/goya/
+
+      - name: Build OrangeFox
+        run: |
+          cd ~/workspace
+          export ALLOW_MISSING_DEPENDENCIES=true
+          export FOX_BUILD_DEVICE=goya
+          export LC_ALL="C"
+          source build/envsetup.sh
+          lunch twrp_goya-ap2a-eng
+          mka adbd vendorbootimage
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OrangeFox-15T
+          path: ~/workspace/out/target/product/goya/vendor_boot.img
