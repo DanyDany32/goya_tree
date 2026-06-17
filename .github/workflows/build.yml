@@ -21,7 +21,7 @@ jobs:
       - name: Setup Swap Space
         uses: pierotofy/set-swap-space@master
         with:
-          swap-size-gb: 12
+          swap-size-gb: 16
 
       - name: Checkout Device Tree
         uses: actions/checkout@v4
@@ -39,21 +39,19 @@ jobs:
         run: |
           git config --global user.name "Builder"
           git config --global user.email "build@example.com"
-          mkdir -p /home/runner/workspace
-          cd /home/runner/workspace
+          mkdir ~/workspace
+          cd ~/workspace
           git clone https://gitlab.com/OrangeFox/sync.git
           cd sync
-          ./orangefox_sync.sh --branch 14.1 --path /home/runner/workspace
-          
-          # LIBERAZIONE DELLO SPAZIO: Cancelliamo i file di git scaricati per recuperare ~25 GB di disco
-          rm -rf /home/runner/workspace/.repo
+          ./orangefox_sync.sh --branch 14.1 --path ~/workspace
 
-      - name: Move Device Tree & Apply BoardConfig
+      - name: Move Device Tree & Fix Makefile
         run: |
-          mkdir -p /home/runner/workspace/device/xiaomi/goya
-          cp -r $GITHUB_WORKSPACE/goya_tree/* /home/runner/workspace/device/xiaomi/goya/
+          mkdir -p ~/workspace/device/xiaomi/goya
+          cp -r $GITHUB_WORKSPACE/goya_tree/* ~/workspace/device/xiaomi/goya/
           
-          cat << 'EOF' >> /home/runner/workspace/device/xiaomi/goya/BoardConfig.mk
+          # Fix partizioni dinamiche
+          cat << 'EOF' >> ~/workspace/device/xiaomi/goya/BoardConfig.mk
           TARGET_COPY_OUT_VENDOR := vendor
           BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := ext4
           TARGET_COPY_OUT_PRODUCT := product
@@ -63,36 +61,24 @@ jobs:
           TARGET_COPY_OUT_ODM := odm
           BOARD_ODMIMAGE_FILE_SYSTEM_TYPE := ext4
           EOF
+          
+          # IL FIX RISOLUTIVO: Aggiungiamo "--exclude=vendor" a rsync per impedire fisicamente l'errore del symlink
+          sed -i 's/--exclude=sdcard/--exclude=sdcard --exclude=vendor --exclude=product --exclude=system_ext --exclude=odm/g' ~/workspace/build/make/core/Makefile
 
       - name: Build OrangeFox
         run: |
-          cd /home/runner/workspace
+          cd ~/workspace
           export ALLOW_MISSING_DEPENDENCIES=true
           export FOX_BUILD_DEVICE=goya
           export LC_ALL="C"
           source build/envsetup.sh
           lunch twrp_goya-ap2a-eng
-          mka adbd recoveryimage || mka adbd vendorbootimage || true
-
-      - name: GATHER EVERYTHING (Rastrellamento Totale)
-        run: |
-          mkdir -p /home/runner/upload_artifacts
           
-          # 1. Copia TUTTI i file .img
-          find /home/runner/workspace/out/target/product/goya/ -maxdepth 1 -type f -name "*.img" -exec cp {} /home/runner/upload_artifacts/ \; || true
-          
-          # 2. Copia TUTTI i file .zip
-          find /home/runner/workspace/out/target/product/goya/ -maxdepth 1 -type f -name "*.zip" -exec cp {} /home/runner/upload_artifacts/ \; || true
-          
-          # 3. Copia TUTTI i file .cpio (se esistono)
-          find /home/runner/workspace/out/target/product/goya/ -maxdepth 1 -type f -name "*.cpio" -exec cp {} /home/runner/upload_artifacts/ \; || true
-          
-          # 4. IL SALVAVITA: Crea un archivio compresso dell'intera cartella "grezza" della recovery!
-          cd /home/runner/workspace/out/target/product/goya/
-          tar -czvf /home/runner/upload_artifacts/recovery_root_raw.tar.gz recovery/root || true
+          # La compilazione REALE e completa
+          mka adbd vendorbootimage
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OrangeFox-15T-ALL-FILES
-          path: /home/runner/upload_artifacts/
+          name: OrangeFox-15T-Final
+          path: ~/workspace/out/target/product/goya/vendor_boot.img
