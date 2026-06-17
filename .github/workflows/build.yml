@@ -77,10 +77,11 @@ jobs:
       - name: INCONTROVERTIBLE RAMDISK PACKAGING
         run: |
           mkdir -p /home/runner/upload_artifacts
-          /home/runner/workspace/out/host/linux-x86/bin/mkbootfs /home/runner/workspace/out/target/product/goya/recovery/root > /home/runner/upload_artifacts/fox_ramdisk.cpio
+          cp /home/runner/workspace/out/target/product/goya/*.zip /home/runner/upload_artifacts/ || true
+          cp /home/runner/workspace/out/target/product/goya/*.img /home/runner/upload_artifacts/ || true
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OrangeFox-15T-Ramdisk-Definitivo
-          path: /home/runner/upload_artifacts/fox_ramdisk.cpio
+          name: OrangeFox-15T-ZIP-FINALE
+          path: /home/runner/upload_artifacts/
