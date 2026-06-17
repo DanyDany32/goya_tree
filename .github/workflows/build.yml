@@ -21,7 +21,7 @@ jobs:
       - name: Setup Swap Space
         uses: pierotofy/set-swap-space@master
         with:
-          swap-size-gb: 16
+          swap-size-gb: 12
 
       - name: Checkout Device Tree
         uses: actions/checkout@v4
@@ -39,19 +39,21 @@ jobs:
         run: |
           git config --global user.name "Builder"
           git config --global user.email "build@example.com"
-          mkdir ~/workspace
-          cd ~/workspace
+          mkdir -p /home/runner/workspace
+          cd /home/runner/workspace
           git clone https://gitlab.com/OrangeFox/sync.git
           cd sync
-          ./orangefox_sync.sh --branch 14.1 --path ~/workspace
+          ./orangefox_sync.sh --branch 14.1 --path /home/runner/workspace
+          
+          # IL FIX PER LO SPAZIO: Libera 25GB di disco eliminando la cronologia git!
+          rm -rf /home/runner/workspace/.repo
 
       - name: Move Device Tree & Fix Makefile
         run: |
-          mkdir -p ~/workspace/device/xiaomi/goya
-          cp -r $GITHUB_WORKSPACE/goya_tree/* ~/workspace/device/xiaomi/goya/
+          mkdir -p /home/runner/workspace/device/xiaomi/goya
+          cp -r $GITHUB_WORKSPACE/goya_tree/* /home/runner/workspace/device/xiaomi/goya/
           
-          # Fix partizioni dinamiche
-          cat << 'EOF' >> ~/workspace/device/xiaomi/goya/BoardConfig.mk
+          cat << 'EOF' >> /home/runner/workspace/device/xiaomi/goya/BoardConfig.mk
           TARGET_COPY_OUT_VENDOR := vendor
           BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := ext4
           TARGET_COPY_OUT_PRODUCT := product
@@ -62,23 +64,21 @@ jobs:
           BOARD_ODMIMAGE_FILE_SYSTEM_TYPE := ext4
           EOF
           
-          # IL FIX RISOLUTIVO: Aggiungiamo "--exclude=vendor" a rsync per impedire fisicamente l'errore del symlink
-          sed -i 's/--exclude=sdcard/--exclude=sdcard --exclude=vendor --exclude=product --exclude=system_ext --exclude=odm/g' ~/workspace/build/make/core/Makefile
+          # IL FIX PER IL SYMLINK: Modifica il codice sorgente per non far schiantare rsync
+          sed -i 's/--exclude=sdcard/--exclude=sdcard --exclude=vendor --exclude=product --exclude=system_ext --exclude=odm/g' /home/runner/workspace/build/make/core/Makefile
 
       - name: Build OrangeFox
         run: |
-          cd ~/workspace
+          cd /home/runner/workspace
           export ALLOW_MISSING_DEPENDENCIES=true
           export FOX_BUILD_DEVICE=goya
           export LC_ALL="C"
           source build/envsetup.sh
           lunch twrp_goya-ap2a-eng
-          
-          # La compilazione REALE e completa
           mka adbd vendorbootimage
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: OrangeFox-15T-Final
-          path: ~/workspace/out/target/product/goya/vendor_boot.img
+          path: /home/runner/workspace/out/target/product/goya/vendor_boot.img
