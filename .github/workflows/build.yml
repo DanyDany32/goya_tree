@@ -44,30 +44,14 @@ jobs:
           git clone https://gitlab.com/OrangeFox/sync.git
           cd sync
           ./orangefox_sync.sh --branch 14.1 --path /home/runner/workspace
-          
-          # IL FIX PER LO SPAZIO: Libera 25GB di disco eliminando la cronologia git!
           rm -rf /home/runner/workspace/.repo
 
-      - name: Move Device Tree & Fix Makefile
+      - name: Move Device Tree
         run: |
           mkdir -p /home/runner/workspace/device/xiaomi/goya
           cp -r $GITHUB_WORKSPACE/goya_tree/* /home/runner/workspace/device/xiaomi/goya/
-          
-          cat << 'EOF' >> /home/runner/workspace/device/xiaomi/goya/BoardConfig.mk
-          TARGET_COPY_OUT_VENDOR := vendor
-          BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := ext4
-          TARGET_COPY_OUT_PRODUCT := product
-          BOARD_PRODUCTIMAGE_FILE_SYSTEM_TYPE := ext4
-          TARGET_COPY_OUT_SYSTEM_EXT := system_ext
-          BOARD_SYSTEM_EXTIMAGE_FILE_SYSTEM_TYPE := ext4
-          TARGET_COPY_OUT_ODM := odm
-          BOARD_ODMIMAGE_FILE_SYSTEM_TYPE := ext4
-          EOF
-          
-          # IL FIX PER IL SYMLINK: Modifica il codice sorgente per non far schiantare rsync
-          sed -i 's/--exclude=sdcard/--exclude=sdcard --exclude=vendor --exclude=product --exclude=system_ext --exclude=odm/g' /home/runner/workspace/build/make/core/Makefile
 
-      - name: Build OrangeFox
+      - name: Build OrangeFox (Solo Recovery)
         run: |
           cd /home/runner/workspace
           export ALLOW_MISSING_DEPENDENCIES=true
@@ -75,10 +59,15 @@ jobs:
           export LC_ALL="C"
           source build/envsetup.sh
           lunch twrp_goya-ap2a-eng
-          mka adbd vendorbootimage
+          mka recoveryimage || true
+
+      - name: Creazione CPIO Manuale
+        run: |
+          cd /home/runner/workspace/out/target/product/goya/recovery/root
+          find . | cpio -H newc -o > /home/runner/workspace/fox_ramdisk.cpio
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OrangeFox-15T-Final
-          path: /home/runner/workspace/out/target/product/goya/vendor_boot.img
+          name: fox_ramdisk
+          path: /home/runner/workspace/fox_ramdisk.cpio
