@@ -21,7 +21,7 @@ jobs:
       - name: Setup Swap Space
         uses: pierotofy/set-swap-space@master
         with:
-          swap-size-gb: 16
+          swap-size-gb: 12
 
       - name: Checkout Device Tree
         uses: actions/checkout@v4
@@ -44,6 +44,9 @@ jobs:
           git clone https://gitlab.com/OrangeFox/sync.git
           cd sync
           ./orangefox_sync.sh --branch 14.1 --path /home/runner/workspace
+          
+          # LIBERAZIONE DELLO SPAZIO: Cancelliamo i file di git scaricati per recuperare ~25 GB di disco
+          rm -rf /home/runner/workspace/.repo
 
       - name: Move Device Tree & Apply BoardConfig
         run: |
@@ -69,13 +72,11 @@ jobs:
           export LC_ALL="C"
           source build/envsetup.sh
           lunch twrp_goya-ap2a-eng
-          # Compila tutti i file
           mka adbd recoveryimage || mka adbd vendorbootimage || true
 
       - name: INCONTROVERTIBLE RAMDISK PACKAGING
         run: |
           mkdir -p /home/runner/upload_artifacts
-          # Usiamo il tool di sistema per comprimere in CPIO la cartella fisica appena creata!
           /home/runner/workspace/out/host/linux-x86/bin/mkbootfs /home/runner/workspace/out/target/product/goya/recovery/root > /home/runner/upload_artifacts/fox_ramdisk.cpio
 
       - name: Upload Artifact
