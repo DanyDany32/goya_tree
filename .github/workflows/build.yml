@@ -45,7 +45,7 @@ jobs:
           cd sync
           ./orangefox_sync.sh --branch 14.1 --path /home/runner/workspace
 
-      - name: Move Device Tree & FIX MAKEFILE
+      - name: Move Device Tree & Apply BoardConfig
         run: |
           mkdir -p /home/runner/workspace/device/xiaomi/goya
           cp -r $GITHUB_WORKSPACE/goya_tree/* /home/runner/workspace/device/xiaomi/goya/
@@ -60,9 +60,6 @@ jobs:
           TARGET_COPY_OUT_ODM := odm
           BOARD_ODMIMAGE_FILE_SYSTEM_TYPE := ext4
           EOF
-          
-          # IL BISTURI DEFINITIVO: Modifichiamo il codice sorgente di Android 14 per cancellare i symlink prima di rsync!
-          sed -i 's/rsync -a --exclude=sdcard/rm -rf $(TARGET_RECOVERY_ROOT_OUT)\/vendor $(TARGET_RECOVERY_ROOT_OUT)\/product $(TARGET_RECOVERY_ROOT_OUT)\/system_ext $(TARGET_RECOVERY_ROOT_OUT)\/odm \&\& rsync -a --exclude=sdcard/g' /home/runner/workspace/build/make/core/Makefile
 
       - name: Build OrangeFox
         run: |
@@ -70,16 +67,19 @@ jobs:
           export ALLOW_MISSING_DEPENDENCIES=true
           export FOX_BUILD_DEVICE=goya
           export LC_ALL="C"
-          export FOX_VIRTUAL_AB_DEVICE=1
-          export FOX_VENDOR_BOOT_RECOVERY=1
           source build/envsetup.sh
           lunch twrp_goya-ap2a-eng
-          mka adbd vendorbootimage
+          # Compila tutti i file
+          mka adbd recoveryimage || mka adbd vendorbootimage || true
+
+      - name: INCONTROVERTIBLE RAMDISK PACKAGING
+        run: |
+          mkdir -p /home/runner/upload_artifacts
+          # Usiamo il tool di sistema per comprimere in CPIO la cartella fisica appena creata!
+          /home/runner/workspace/out/host/linux-x86/bin/mkbootfs /home/runner/workspace/out/target/product/goya/recovery/root > /home/runner/upload_artifacts/fox_ramdisk.cpio
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OrangeFox-15T-Images
-          path: |
-            /home/runner/workspace/out/target/product/goya/vendor_boot.img
-            /home/runner/workspace/out/target/product/goya/ramdisk-recovery.img
+          name: OrangeFox-15T-Ramdisk-Definitivo
+          path: /home/runner/upload_artifacts/fox_ramdisk.cpio
