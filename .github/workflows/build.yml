@@ -74,14 +74,25 @@ jobs:
           lunch twrp_goya-ap2a-eng
           mka adbd recoveryimage || mka adbd vendorbootimage || true
 
-      - name: INCONTROVERTIBLE RAMDISK PACKAGING
+      - name: GATHER EVERYTHING (Rastrellamento Totale)
         run: |
           mkdir -p /home/runner/upload_artifacts
-          cp /home/runner/workspace/out/target/product/goya/*.zip /home/runner/upload_artifacts/ || true
-          cp /home/runner/workspace/out/target/product/goya/*.img /home/runner/upload_artifacts/ || true
+          
+          # 1. Copia TUTTI i file .img
+          find /home/runner/workspace/out/target/product/goya/ -maxdepth 1 -type f -name "*.img" -exec cp {} /home/runner/upload_artifacts/ \; || true
+          
+          # 2. Copia TUTTI i file .zip
+          find /home/runner/workspace/out/target/product/goya/ -maxdepth 1 -type f -name "*.zip" -exec cp {} /home/runner/upload_artifacts/ \; || true
+          
+          # 3. Copia TUTTI i file .cpio (se esistono)
+          find /home/runner/workspace/out/target/product/goya/ -maxdepth 1 -type f -name "*.cpio" -exec cp {} /home/runner/upload_artifacts/ \; || true
+          
+          # 4. IL SALVAVITA: Crea un archivio compresso dell'intera cartella "grezza" della recovery!
+          cd /home/runner/workspace/out/target/product/goya/
+          tar -czvf /home/runner/upload_artifacts/recovery_root_raw.tar.gz recovery/root || true
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OrangeFox-15T-ZIP-FINALE
+          name: OrangeFox-15T-ALL-FILES
           path: /home/runner/upload_artifacts/
