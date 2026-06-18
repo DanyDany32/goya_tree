@@ -46,12 +46,23 @@ jobs:
           ./orangefox_sync.sh --branch 14.1 --path /home/runner/workspace
           rm -rf /home/runner/workspace/.repo
 
-      - name: Move Device Tree
+      - name: Move Device Tree & Fix Symlink
         run: |
           mkdir -p /home/runner/workspace/device/xiaomi/goya
           cp -r $GITHUB_WORKSPACE/goya_tree/* /home/runner/workspace/device/xiaomi/goya/
+          
+          cat << 'EOF' >> /home/runner/workspace/device/xiaomi/goya/BoardConfig.mk
+          TARGET_COPY_OUT_VENDOR := vendor
+          BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := ext4
+          TARGET_COPY_OUT_PRODUCT := product
+          BOARD_PRODUCTIMAGE_FILE_SYSTEM_TYPE := ext4
+          TARGET_COPY_OUT_SYSTEM_EXT := system_ext
+          BOARD_SYSTEM_EXTIMAGE_FILE_SYSTEM_TYPE := ext4
+          TARGET_COPY_OUT_ODM := odm
+          BOARD_ODMIMAGE_FILE_SYSTEM_TYPE := ext4
+          EOF
 
-      - name: Build OrangeFox (Solo Recovery)
+      - name: Build OrangeFox (THE FULL BUILD)
         run: |
           cd /home/runner/workspace
           export ALLOW_MISSING_DEPENDENCIES=true
@@ -59,15 +70,18 @@ jobs:
           export LC_ALL="C"
           source build/envsetup.sh
           lunch twrp_goya-ap2a-eng
-          mka recoveryimage || true
+          
+          # Questo forza la compilazione di TUTTI i 29.267 file di OrangeFox
+          mka adbd vendorbootimage || true
 
-      - name: Creazione CPIO Manuale
+      - name: INCONTROVERTIBLE RAMDISK PACKAGING
         run: |
+          # Andiamo nella cartella dove risiedono i 29.000 file appena compilati e li estraiamo a forza
           cd /home/runner/workspace/out/target/product/goya/recovery/root
-          find . | cpio -H newc -o > /home/runner/workspace/fox_ramdisk.cpio
+          find . | cpio -H newc -o > /home/runner/workspace/fox_ramdisk_FINALE.cpio
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: fox_ramdisk
-          path: /home/runner/workspace/fox_ramdisk.cpio
+          name: fox_ramdisk_Vero
+          path: /home/runner/workspace/fox_ramdisk_FINALE.cpio
