@@ -1,0 +1,10 @@
+/system         system          /dev/block/mapper/system      flags=logical
+/system_ext     system_ext      /dev/block/mapper/system_ext  flags=logical
+/vendor         vendor          /dev/block/mapper/vendor      flags=logical
+/product        product         /dev/block/mapper/product     flags=logical
+/odm            odm             /dev/block/mapper/odm         flags=logical
+
+/metadata       f2fs            /dev/block/by-name/metadata
+/data           f2fs            /dev/block/by-name/userdata
+
+/persist        ext4            /dev/block/by-name/persist
