@@ -1,4 +1,4 @@
-name: Build OrangeFox 14.1
+name: Build OrangeFox 15.1 (Android 15)
 
 on:
   workflow_dispatch:
@@ -35,7 +35,7 @@ jobs:
           sudo curl https://storage.googleapis.com/git-repo-downloads/repo -o /usr/local/bin/repo
           sudo chmod a+rx /usr/local/bin/repo
 
-      - name: Sync OrangeFox 14.1
+      - name: Sync OrangeFox 15.1 (IL VERO SALTO GENERAZIONALE)
         run: |
           git config --global user.name "Builder"
           git config --global user.email "build@example.com"
@@ -43,45 +43,39 @@ jobs:
           cd /home/runner/workspace
           git clone https://gitlab.com/OrangeFox/sync.git
           cd sync
-          ./orangefox_sync.sh --branch 14.1 --path /home/runner/workspace
+          # Chiamiamo il branch 15.1 per la compatibilità con HyperOS 2!
+          ./orangefox_sync.sh --branch 15.1 --path /home/runner/workspace
           rm -rf /home/runner/workspace/.repo
 
-      - name: Move Device Tree & Fix Symlink
+      - name: Move Device Tree & Update AndroidProducts
         run: |
           mkdir -p /home/runner/workspace/device/xiaomi/goya
           cp -r $GITHUB_WORKSPACE/goya_tree/* /home/runner/workspace/device/xiaomi/goya/
           
-          cat << 'EOF' >> /home/runner/workspace/device/xiaomi/goya/BoardConfig.mk
-          TARGET_COPY_OUT_VENDOR := vendor
-          BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := ext4
-          TARGET_COPY_OUT_PRODUCT := product
-          BOARD_PRODUCTIMAGE_FILE_SYSTEM_TYPE := ext4
-          TARGET_COPY_OUT_SYSTEM_EXT := system_ext
-          BOARD_SYSTEM_EXTIMAGE_FILE_SYSTEM_TYPE := ext4
-          TARGET_COPY_OUT_ODM := odm
-          BOARD_ODMIMAGE_FILE_SYSTEM_TYPE := ext4
+          # Aggiorniamo le versioni per Android 15 (ap3a)
+          cat << 'EOF' > /home/runner/workspace/device/xiaomi/goya/AndroidProducts.mk
+          PRODUCT_MAKEFILES := $(LOCAL_DIR)/twrp_goya.mk
+          COMMON_LUNCH_CHOICES := twrp_goya-ap3a-eng twrp_goya-trunk_staging-eng
           EOF
 
-      - name: Build OrangeFox (THE FULL BUILD)
+      - name: Build OrangeFox 15.1
         run: |
           cd /home/runner/workspace
           export ALLOW_MISSING_DEPENDENCIES=true
           export FOX_BUILD_DEVICE=goya
           export LC_ALL="C"
           source build/envsetup.sh
-          lunch twrp_goya-ap2a-eng
-          
-          # Questo forza la compilazione di TUTTI i 29.267 file di OrangeFox
+          # Usiamo il tag di Android 15
+          lunch twrp_goya-ap3a-eng || lunch twrp_goya-trunk_staging-eng
           mka adbd vendorbootimage || true
 
-      - name: INCONTROVERTIBLE RAMDISK PACKAGING
+      - name: INCONTROVERTIBLE RAMDISK EXTRACTION
         run: |
-          # Andiamo nella cartella dove risiedono i 29.000 file appena compilati e li estraiamo a forza
           cd /home/runner/workspace/out/target/product/goya/recovery/root
-          find . | cpio -H newc -o > /home/runner/workspace/fox_ramdisk_FINALE.cpio
+          find . | cpio -H newc -o > /home/runner/workspace/fox_ramdisk_15.1.cpio
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: fox_ramdisk_Vero
-          path: /home/runner/workspace/fox_ramdisk_FINALE.cpio
+          name: OrangeFox-15.1-Ramdisk
+          path: /home/runner/workspace/fox_ramdisk_15.1.cpio
